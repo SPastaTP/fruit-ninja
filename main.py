@@ -2,6 +2,7 @@ import pygame
 import sys
 import os
 import random
+import time
 import datetime
 import schedule
 
@@ -15,15 +16,60 @@ NAME_CHANGE = {'Red_Apple.png': ['apple12.png', 'apple2.png'], 'Coconut.png': ['
                'Watermelon.png': ['watermelon1.png', 'watermelon2.png'], 'Banana.png': ['banana1.png', 'banana2.png'],
                'Kiwi.png': ['kiwi1.png', 'kiwi2.png'], 'Lemon.png': ['lemon1.png', 'lemon2.png'],
                'Orange.png': ['or1.png', 'or2.png'], 'Pear.png': ['pear1.png', 'pear2.png']}
+global score
+score = 0
 
 
-def load_image(name, colorkey=None):
+def load_image(name, colorkey=None):  # Обработка изображений
     fullname = os.path.join('data', name)
     if not os.path.isfile(fullname):
         print(f"Файл с изображением '{fullname}' не найден")
         sys.exit()
     image = pygame.image.load(fullname)
     return image
+
+
+def write_text(sc, text, size, x, y):  # функции для вывода текста
+    font = pygame.font.Font(None, size)
+    rendered = font.render(text, True, (255, 255, 255))
+    rect = rendered.get_rect()
+    rect.midtop = (x, y)
+    screen.blit(rendered, rect)
+
+
+run = False
+
+
+class Menu():
+    def handle_event(self, event):
+        global run
+        if event.type == pygame.QUIT:
+            terminate()
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            print(event.pos)
+            run = True
+
+
+class ClassicMode():
+  def draw(self):
+    pass
+
+  def update(self):
+    pass
+    # scene = scenes['Main']
+
+class ZenMode():
+    pass
+
+class ArcadeMode():
+    pass
+
+
+scenes = {'Menu': Menu(),
+          'Classic': ClassicMode(), 'Zen': ZenMode(), 'Arcade':
+          ArcadeMode()}
+
+scene = scenes['Menu']
 
 
 class Sprites(pygame.sprite.Sprite):
@@ -45,23 +91,52 @@ class Sprites(pygame.sprite.Sprite):
             self.rect.y = 730
 
     def update(self, *args):
+        global score
+        draw_score(20, 20, score)
+        draw_time(600, 20)
         if not self.cut:
             if self.rect.y <= self.top:
                 self.flag = True
             if self.flag:
-                self.rect = self.rect.move(0, 2)
+                self.rect = self.rect.move(0, 5)
             else:
-                self.rect = self.rect.move(0, -2)
+                self.rect = self.rect.move(0, -5)
         else:
-            self.rect = self.rect.move(0, 2)
+            self.rect = self.rect.move(0, 8)
 
     def check(self, pos):
-        a, b, c, d = self.rect
-        if int(pos[0]) in range(self.rect.x, self.rect.x + self.rect[2]) and int(pos[1]) in range(self.rect.y, self.rect.y + self.rect[3]):
+        global extra_time, score
+        if int(pos[0]) in range(self.rect.x, self.rect.x + self.rect[2]) and int(pos[1]) in range(self.rect.y,
+                                                                                                  self.rect.y +
+                                                                                                  self.rect[
+                                                                                                      3]) and self.name == 'Bomb.png':
+            extra_time += 10
+            all_sprites.remove(self)
+            return False
+        elif int(pos[0]) in range(self.rect.x, self.rect.x + self.rect[2]) and int(pos[1]) in range(self.rect.y,
+                                                                                                  self.rect.y +
+                                                                                                  self.rect[
+                                                                                                      3]) and self.name == 'Score_2x_Banana.png':
+            score *= 2
+            all_sprites.remove(self)
+            return False
+        elif int(pos[0]) in range(self.rect.x, self.rect.x + self.rect[2]) and int(pos[1]) in range(self.rect.y,
+                                                                                                  self.rect.y +
+                                                                                                  self.rect[
+                                                                                                      3]) and self.name == '5seconds_Banana.png':
+            extra_time -= 5
+            all_sprites.remove(self)
+            return False
+        elif int(pos[0]) in range(self.rect.x, self.rect.x + self.rect[2]) and int(pos[1]) in range(self.rect.y,
+                                                                                                    self.rect.y +
+                                                                                                    self.rect[3]):
             return True
-        return False
+        else:
+            return False
 
     def change(self):
+        global score
+        score += 1
         im = NAME_CHANGE[self.name]
         for el in im:
             Sprites(el, True, [self.rect[0], self.rect[1], self.rect[2], self.rect[3]])
@@ -84,24 +159,31 @@ def terminate():
     sys.exit()
 
 
-def start_screen():
-    intro_text = ["ЗАСТАВКА", "",
-                  "Правила игры",
-                  "Если в правилах несколько строк,",
-                  "приходится выводить их построчно"]
+def draw_score(x, y, score):  # рисует счет
+    write_text(screen, str(score), 30, x, y)
 
-    fon = pygame.transform.scale(load_image('fon.png'), (WIDTH, HEIGHT))
+
+def draw_time(x, y):
+    write_text(screen, f'Осталось {str(60 - round(end_time - start_time + extra_time))} секунд', 30, x, y)
+
+
+def game_over():  # завершение игры, вывод счета
+    global score
+    game_over_text = [f'Вы набрали {score} очков',
+                      'Кликните чтобы продолжить']
+    fon = pygame.transform.scale(load_image('background.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
     font = pygame.font.Font(None, 30)
     text_coord = 546
-    for line in intro_text:
-        string_rendered = font.render(line, 1, pygame.Color('white'))
+    for line in game_over_text:
+        string_rendered = font.render(line, True, pygame.Color('white'))
         intro_rect = string_rendered.get_rect()
         text_coord += 10
         intro_rect.top = text_coord
         intro_rect.x = 550
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
+    score = 0
 
     while True:
         for event in pygame.event.get():
@@ -109,7 +191,49 @@ def start_screen():
                 terminate()
             elif event.type == pygame.KEYDOWN or \
                     event.type == pygame.MOUSEBUTTONDOWN:
-                return  # начинаем игру
+                start_screen1()
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def start_screen1():
+    fon = pygame.transform.scale(load_image('fon2.jpg'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if start_screen2():
+                    return
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def start_screen2():
+    global run
+    intro_text = ["Правила игры", "",
+                  "В игре существует несколько режимов: режим, режим, режим",
+                  "Чтобы активировать клинок зажмите правую кнопку мыши",
+                  "Чтобы приостановить игру нажмите левую кнопку мыши",
+                  "Выход в настройки осуществляется клавишей CTRL"]
+    fon2 = pygame.transform.scale(load_image('fon3.jpg'), (WIDTH, HEIGHT))
+    screen.blit(fon2, (0, 0))
+    font = pygame.font.Font(None, 50)
+    text_coord = 30
+    for line in intro_text:
+        string_rendered = font.render(line, 20, pygame.Color('White'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 20
+        intro_rect.top = text_coord
+        intro_rect.x = 80
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+    while True:
+        for event in pygame.event.get():
+            scene.handle_event(event)
+        if run:
+            return True
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -147,11 +271,13 @@ pygame.init()
 clock = pygame.time.Clock()
 size = WIDTH, HEIGHT = 1280, 730
 screen = pygame.display.set_mode(size)
-start_screen()
-fruits = pygame.sprite.Group()
-sprite = pygame.sprite.Sprite()
-data = ['Red_Apple.png', 'Coconut.png', 'Mango.png', 'Pineapple.png',
+start_screen1()
+start_time = time.time()
+extra_time = 0
+data = ['Red_Apple.png', 'Coconut.png', 'Mango.png', 'Pineapple.png', 'Bomb.png', 'Score_2x_Banana.png',
+        '5seconds_Banana.png',
         'Watermelon.png', 'Banana.png', 'Kiwi.png', 'Lemon.png', 'Orange.png', 'Pear.png', 'melon.png']
+# Score_2x_Banana удваивает счет, 10seconds_Banana добавляет 10 секунд времени, Bomb отнимает 5 секунд
 
 
 def job():
@@ -160,11 +286,12 @@ def job():
         Sprites(data[random.randrange(0, 10)])
 
 
-schedule.every(2).seconds.do(job)
+schedule.every(1).seconds.do(job)
 
 if __name__ == '__main__':
     while running:
-        schedule.run_pending()
+        end_time = time.time()
+        schedule.run_pending()  # запуск запланированных заданий
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -173,6 +300,8 @@ if __name__ == '__main__':
         for e in all_sprites:
             if e.rect.x < 0 or e.rect.x > WIDTH or e.rect.y < 0 or e.rect.y > HEIGHT:
                 all_sprites.remove(e)
+        if round(end_time - start_time + extra_time) >= 60:
+            game_over()
         all_sprites.draw(screen)
         all_sprites.update()
         pygame.display.flip()
