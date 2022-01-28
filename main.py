@@ -210,6 +210,7 @@ class ClassicMode():
         data1 = data.copy()
         data1.remove('5seconds_Banana.png')
         data1.remove('Score_2x_Banana.png')
+        print(data1)
         for i in range(k):
             Sprites(data1[random.randrange(0, 11)])
 
@@ -259,9 +260,6 @@ def draw_time(x, y):
 
 def game_over():  # завершение игры, вывод счета
     global cursor, connect, score
-    cursor.execute("""INSERT INTO res(results) VALUES(?)""",
-                   (score))
-    connect.commit()
     global run
     game_over_text = [f'Вы набрали {score} очков',
                       'Кликните чтобы продолжить']
