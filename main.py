@@ -5,7 +5,11 @@ import random
 import time
 import datetime
 import schedule
+import sqlite3
 
+connect = sqlite3.connect('data.sqlite')
+cursor = connect.cursor()
+all_sprites = pygame.sprite.Group()
 FPS = 50
 PRICE = {'Red_Apple.png': 1, 'Coconut.png': 1, 'melon.png': 1, 'Mango.png': 1, 'Pineapple.png': 1,
          'Watermelon.png': 1, 'Banana.png': 1, 'Kiwi.png': 1, 'Lemon.png': 1,
@@ -16,6 +20,11 @@ NAME_CHANGE = {'Red_Apple.png': ['apple12.png', 'apple2.png'], 'Coconut.png': ['
                'Watermelon.png': ['watermelon1.png', 'watermelon2.png'], 'Banana.png': ['banana1.png', 'banana2.png'],
                'Kiwi.png': ['kiwi1.png', 'kiwi2.png'], 'Lemon.png': ['lemon1.png', 'lemon2.png'],
                'Orange.png': ['or1.png', 'or2.png'], 'Pear.png': ['pear1.png', 'pear2.png']}
+
+data = ['Red_Apple.png', 'Coconut.png', 'Mango.png', 'Pineapple.png', 'Bomb.png', 'Score_2x_Banana.png',
+        '5seconds_Banana.png',
+        'Watermelon.png', 'Banana.png', 'Kiwi.png', 'Lemon.png', 'Orange.png', 'Pear.png', 'melon.png']
+
 global score
 score = 0
 
@@ -64,18 +73,43 @@ class Menu():
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     terminate()
-                if event.type == pygame.MOUSEMOTION and event.pos[0] in range(69, 389) and event.pos[1] in range(203, 530):
+                if event.type == pygame.MOUSEMOTION and event.pos[0] in range(69, 389) and event.pos[1] in range(203,
+                                                                                                                 530):
                     cursor.rect.x = event.pos[0]
                     cursor.rect.y = event.pos[1]
                     cursor_flag = True
+                    text = 'Режим: Zen Mode'
+                elif event.type == pygame.MOUSEMOTION and event.pos[0] in range(494, 785) and event.pos[1] in range(180,
+                                                                                                                    477):
+                    cursor.rect.x = event.pos[0]
+                    cursor.rect.y = event.pos[1]
+                    cursor_flag = True
+                    text = 'Режим: Classic Mode'
+                elif event.type == pygame.MOUSEMOTION and event.pos[0] in range(891, 1205) and event.pos[1] in range(
+                        202, 523):
+                    cursor.rect.x = event.pos[0]
+                    cursor.rect.y = event.pos[1]
+                    cursor_flag = True
+                    text = 'Режим: Arcade Mode'
                 elif event.type == pygame.MOUSEMOTION:
                     cursor_flag = False
                     pygame.mouse.set_visible(True)
-                elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    print(event.pos)
                     if event.pos[0] in range(69, 389) and event.pos[1] in range(203, 530):
                         pygame.mouse.set_visible(True)
                         run = True
-                        # scene = scenes['Zen'] смена перемнной на другой класс
+                        scene = scenes['Zen']
+                        return
+                    elif event.pos[0] in range(494, 785) and event.pos[1] in range(180, 477):
+                        pygame.mouse.set_visible(True)
+                        run = True
+                        scene = scenes['Classic']
+                        return
+                    elif event.pos[0] in range(891, 1205) and event.pos[1] in range(202, 523):
+                        pygame.mouse.set_visible(True)
+                        run = True
+                        scene = scenes['Arcade']
                         return
             screen.blit(fon, (0, 0))
             if cursor_flag and pygame.mouse.get_focused():
@@ -83,29 +117,6 @@ class Menu():
             else:
                 pygame.mouse.set_visible(True)
             pygame.display.flip()
-
-
-class ClassicMode():
-    def draw(self):
-        pass
-
-    def update(self):
-        pass
-
-
-class ZenMode():
-    pass
-
-
-class ArcadeMode():
-    pass
-
-
-scenes = {'Menu': Menu(),
-          'Classic': ClassicMode(), 'Zen': ZenMode(), 'Arcade':
-              ArcadeMode()}
-
-scene = scenes['Menu']
 
 
 class Sprites(pygame.sprite.Sprite):
@@ -192,6 +203,47 @@ def get_click(pos):
                 e.change()
 
 
+class ClassicMode():
+    def sprites_drawing(self):
+        k = random.randrange(2, 5)
+        global data
+        data1 = data.copy()
+        data1.remove('5seconds_Banana.png')
+        data1.remove('Score_2x_Banana.png')
+        for i in range(k):
+            Sprites(data1[random.randrange(0, 11)])
+
+    def update(self):
+        pass
+
+
+class ZenMode():
+    def sprites_drawing(self):
+        k = random.randrange(2, 5)
+        global data
+        data1 = data[:]
+        data1.remove('5seconds_Banana.png')
+        data1.remove('Score_2x_Banana.png')
+        data1.remove('Bomb.png')
+        for i in range(k):
+            Sprites(data1[random.randrange(0, 7)])
+
+
+class ArcadeMode():
+    def sprites_drawing(self):
+        k = random.randrange(2, 5)
+        for i in range(k):
+            global data
+            Sprites(data[random.randrange(0, 7)])
+
+
+scenes = {'Menu': Menu(),
+          'Classic': ClassicMode().sprites_drawing(), 'Zen': ZenMode().sprites_drawing(), 'Arcade':
+              ArcadeMode().sprites_drawing()}
+
+scene = scenes['Menu']
+
+
 def terminate():
     pygame.quit()
     sys.exit()
@@ -206,7 +258,11 @@ def draw_time(x, y):
 
 
 def game_over():  # завершение игры, вывод счета
-    global score, run
+    global cursor, connect, score
+    cursor.execute("""INSERT INTO res(results) VALUES(?)""",
+                   (score))
+    connect.commit()
+    global run
     game_over_text = [f'Вы набрали {score} очков',
                       'Кликните чтобы продолжить']
     fon = pygame.transform.scale(load_image('background.jpg'), (WIDTH, HEIGHT))
@@ -222,6 +278,8 @@ def game_over():  # завершение игры, вывод счета
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
     score = 0
+    global scene
+    scene = scenes['Menu']
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -318,9 +376,6 @@ screen = pygame.display.set_mode(size)
 start_screen1()
 start_time = time.time()
 extra_time = 0
-data = ['Red_Apple.png', 'Coconut.png', 'Mango.png', 'Pineapple.png', 'Bomb.png', 'Score_2x_Banana.png',
-        '5seconds_Banana.png',
-        'Watermelon.png', 'Banana.png', 'Kiwi.png', 'Lemon.png', 'Orange.png', 'Pear.png', 'melon.png']
 
 
 # Score_2x_Banana удваивает счет, 10seconds_Banana добавляет 10 секунд времени, Bomb отнимает 5 секунд
