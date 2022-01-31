@@ -8,6 +8,8 @@ import schedule
 import sqlite3
 
 
+connect1 = sqlite3.connect('films_db.sqlite')
+cursor1 = connect1.cursor()
 connect = sqlite3.connect('data.sqlite')
 cursor = connect.cursor()
 all_sprites = pygame.sprite.Group()
@@ -162,6 +164,7 @@ class Sprites(pygame.sprite.Sprite):
         super().__init__(all_sprites)
         self.name = im
         self.price = 2
+        self.vx = random.randrange(-2, 2)
         self.image = load_image(im)
         self.cut = cut
         self.flag = False
@@ -183,11 +186,11 @@ class Sprites(pygame.sprite.Sprite):
             if self.rect.y <= self.top:
                 self.flag = True
             if self.flag:
-                self.rect = self.rect.move(0, 5)
+                self.rect = self.rect.move(self.vx, 5)
             else:
-                self.rect = self.rect.move(0, -5)
+                self.rect = self.rect.move(self.vx, -5)
         else:
-            self.rect = self.rect.move(0, 8)
+            self.rect = self.rect.move(self.vx, 8)
 
     def check(self, pos):
         global extra_time, score
@@ -295,9 +298,14 @@ def draw_time(x, y):
 
 
 def game_over():  # завершение игры, вывод счета
-    global cursor, connect, score
+    global cursor1, connect1, score
+    cursor1.execute("""INSERT INTO result(res) VALUES(?)""", (str(score), ))
+    connect1.commit()
     global run
+    list_score = cursor1.execute("""SELECT res FROM result """).fetchall()
+    r = max(list_score)
     game_over_text = [f'Вы набрали {score} очков',
+                      f'Лучший результат {r[0]} ',
                       'Кликните чтобы продолжить']
     fon = pygame.transform.scale(load_image('background.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
