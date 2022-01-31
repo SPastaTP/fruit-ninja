@@ -5,7 +5,14 @@ import random
 import time
 import datetime
 import schedule
+import sqlite3
 
+
+connect1 = sqlite3.connect('films_db.sqlite')
+cursor1 = connect1.cursor()
+connect = sqlite3.connect('data.sqlite')
+cursor = connect.cursor()
+all_sprites = pygame.sprite.Group()
 FPS = 50
 PRICE = {'Red_Apple.png': 1, 'Coconut.png': 1, 'melon.png': 1, 'Mango.png': 1, 'Pineapple.png': 1,
          'Watermelon.png': 1, 'Banana.png': 1, 'Kiwi.png': 1, 'Lemon.png': 1,
@@ -16,6 +23,11 @@ NAME_CHANGE = {'Red_Apple.png': ['apple12.png', 'apple2.png'], 'Coconut.png': ['
                'Watermelon.png': ['watermelon1.png', 'watermelon2.png'], 'Banana.png': ['banana1.png', 'banana2.png'],
                'Kiwi.png': ['kiwi1.png', 'kiwi2.png'], 'Lemon.png': ['lemon1.png', 'lemon2.png'],
                'Orange.png': ['or1.png', 'or2.png'], 'Pear.png': ['pear1.png', 'pear2.png']}
+
+data = ['Red_Apple.png', 'Coconut.png', 'Mango.png', 'Pineapple.png', 'Bomb.png', 'Score_2x_Banana.png',
+        '5seconds_Banana.png',
+        'Watermelon.png', 'Banana.png', 'Kiwi.png', 'Lemon.png', 'Orange.png', 'Pear.png', 'melon.png']
+
 global score
 score = 0
 
@@ -30,7 +42,7 @@ def load_image(name, colorkey=None):  # Обработка изображени�
 
 
 def write_text(sc, text, size, x, y):  # функции для вывода текста
-    font = pygame.font.Font(None, size)
+    font = pygame.font.SysFont('bahnschrift', size)
     rendered = font.render(text, True, (255, 255, 255))
     rect = rendered.get_rect()
     rect.midtop = (x, y)
@@ -40,17 +52,67 @@ def write_text(sc, text, size, x, y):  # функции для вывода те
 run = False
 
 
-class Menu():
-    def handle_event(self, event):
+class Profile:
+    pass
 
+
+class Settings:  # настройки, вызываются клавишей esc (или нажатием на иконку)
+
+    def button(self, color, x, y, width, height, screen, text=None,
+               outline=None):  # добавление кнопки на экран(outliтe - цвет контура кнопки)
+        if outline:
+            pygame.draw.rect(screen, outline, (x - 2, y - 2, width + 4, height + 4), 0)
+
+        pygame.draw.rect(screen, color, (x, y, width, height), 0)
+
+        if text:
+            font = pygame.font.SysFont('bahnschrift', 20)
+            text = font.render(text, 10, (0, 0, 0))
+            screen.blit(text, (
+                x + (width / 2 - text.get_width() / 2), y + (height / 2 - text.get_height() / 2)))
+
+    def draw_set(self):
+        fon = pygame.transform.scale(load_image('fon3.jpg'), (WIDTH, HEIGHT))
+        screen.blit(fon, (0, 0))
+        self.button('white', 370, 232, 500, 70, screen, 'Хочу войти в свой аккаунт', 'black')
+        self.button('light grey', 370, 337, 500, 70, screen, 'Остаться в игре с текущим анонимном состоянии', 'black')
+        self.button('grey', 370, 442, 500, 70, screen, 'Поменять на темную тему [dangerous!]', 'black')
+        self.button('dark grey', 470, 547, 300, 50, screen, 'Вернуться на главное меню', 'black')
+        sp_pos_buttons = [(range(370, 870), range(232, 302)), (range(370, 870), range(337, 407)),
+                          (range(370, 870), range(442, 512)), (range(470, 770), range(547, 597))]
+        while True:
+            action = 0
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    terminate()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    for i in range(len(sp_pos_buttons)):
+                        if event.pos[0] in sp_pos_buttons[i][0] and event.pos[1] in sp_pos_buttons[i][1]:
+                            action = i
+                            return action
+            pygame.display.flip()
+
+
+class Menu:
+    def handle_event(self, event):
         if event.type == pygame.QUIT:
             terminate()
         if event.type == pygame.MOUSEBUTTONDOWN:
             self.draw()
 
+    def dict(self, x, y):
+        chenge_mode = {'Режим: Zen Mode': (range(69, 389), range(203, 530)),
+                       'Режим: Classic Mode': (range(494, 785), range(180, 477)),
+                       'Режим: Arcade Mode': (range(891, 1205), range(202, 523)),
+                       'Icon': (range(891, 1205), range(202, 523))}
+        for el in chenge_mode:
+            if x in chenge_mode[el][0] and y in chenge_mode[el][1] and el != 'Icon':
+                return True, el
+        return False, ''
+
     def draw(self):
         cursor_flag = False
-        ev = (0,)
+        text = ''
         global run, scene
         fon = pygame.transform.scale(load_image('fon.png'), (WIDTH, HEIGHT))
         screen.blit(fon, (0, 0))
@@ -59,53 +121,40 @@ class Menu():
         cursor = pygame.sprite.Sprite(cursor_group)
         cursor.image = cur_image
         cursor.rect = cursor.image.get_rect()
-        pygame.mouse.set_visible(False)
+        pygame.mouse.set_visible(True)
+
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     terminate()
-                if event.type == pygame.MOUSEMOTION and event.pos[0] in range(69, 389) and event.pos[1] in range(203, 530):
+                if event.type == pygame.MOUSEMOTION:
                     cursor.rect.x = event.pos[0]
                     cursor.rect.y = event.pos[1]
-                    cursor_flag = True
-                elif event.type == pygame.MOUSEMOTION:
-                    cursor_flag = False
-                    pygame.mouse.set_visible(True)
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.pos[0] in range(69, 389) and event.pos[1] in range(203, 530):
-                        pygame.mouse.set_visible(True)
-                        run = True
-                        # scene = scenes['Zen'] смена перемнной на другой класс
+                    cursor_flag, text = self.dict(cursor.rect.x, cursor.rect.y)
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    run, scene1 = self.dict(event.pos[0], event.pos[1])
+                    if run:
+                        global scenes
+                        scene = scenes[scene1[7:]]
+                        global start_time, extra_time
+                        start_time = time.time()
+                        extra_time = 0
                         return
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        set = Settings()
+                        action = set.draw_set()
+                        if action == 0:
+                            pass
+                # переход в настройки
             screen.blit(fon, (0, 0))
-            if cursor_flag and pygame.mouse.get_focused():
+            if cursor_flag:
+                pygame.mouse.set_visible(False)
                 cursor_group.draw(screen)
+                write_text(screen, text, 50, 650, 550)
             else:
                 pygame.mouse.set_visible(True)
             pygame.display.flip()
-
-
-class ClassicMode():
-    def draw(self):
-        pass
-
-    def update(self):
-        pass
-
-
-class ZenMode():
-    pass
-
-
-class ArcadeMode():
-    pass
-
-
-scenes = {'Menu': Menu(),
-          'Classic': ClassicMode(), 'Zen': ZenMode(), 'Arcade':
-              ArcadeMode()}
-
-scene = scenes['Menu']
 
 
 class Sprites(pygame.sprite.Sprite):
@@ -113,13 +162,14 @@ class Sprites(pygame.sprite.Sprite):
         super().__init__(all_sprites)
         self.name = im
         self.price = 2
+        self.vx = random.randrange(-2, 2)
         self.image = load_image(im)
         self.cut = cut
         self.flag = False
         if self.cut:
-            self.rect = self.image.get_rect()
-            self.rect.y = args[0][1]
-            self.rect.x = args[0][0]
+            self.rect = self.image.get_rect(center=(args[0][0], args[0][1]))
+            if self.rect[0] <= 0:
+                self.rect[0] = 0
         else:
             self.rect = self.image.get_rect()
             self.rect.x = random.randrange(10, 1001)
@@ -134,11 +184,11 @@ class Sprites(pygame.sprite.Sprite):
             if self.rect.y <= self.top:
                 self.flag = True
             if self.flag:
-                self.rect = self.rect.move(0, 5)
+                self.rect = self.rect.move(self.vx, 5)
             else:
-                self.rect = self.rect.move(0, -5)
+                self.rect = self.rect.move(self.vx, -5)
         else:
-            self.rect = self.rect.move(0, 8)
+            self.rect = self.rect.move(self.vx, 8)
 
     def check(self, pos):
         global extra_time, score
@@ -174,8 +224,10 @@ class Sprites(pygame.sprite.Sprite):
         global score
         score += 1
         im = NAME_CHANGE[self.name]
+        k = 0
         for el in im:
-            Sprites(el, True, [self.rect[0], self.rect[1], self.rect[2], self.rect[3]])
+            Sprites(el, True, [self.rect[0] + 50 * k, self.rect[1], self.rect[2], self.rect[3]])
+            k += 1
         all_sprites.remove(self)
 
     def sliced(self):
@@ -188,6 +240,46 @@ def get_click(pos):
             a = e.check(pos)
             if a:
                 e.change()
+
+
+class ClassicMode():
+    def sprites_drawing(self):
+        k = random.randrange(2, 5)
+        global data
+        data1 = data.copy()
+        data1.remove('5seconds_Banana.png')
+        data1.remove('Score_2x_Banana.png')
+        for i in range(k):
+            Sprites(data1[random.randrange(0, 11)])
+
+    def update(self):
+        pass
+
+
+class ZenMode():
+    def sprites_drawing(self):
+        k = random.randrange(2, 5)
+        global data
+        data1 = data[:]
+        data1.remove('5seconds_Banana.png')
+        data1.remove('Score_2x_Banana.png')
+        data1.remove('Bomb.png')
+        for i in range(k):
+            Sprites(data1[random.randrange(0, 7)])
+
+
+class ArcadeMode():
+    def sprites_drawing(self):
+        k = random.randrange(2, 5)
+        for i in range(k):
+            global data
+            Sprites(data[random.randrange(0, 7)])
+
+
+scenes = {'Menu': Menu(),
+          'Classic Mode': ClassicMode().sprites_drawing(), 'Zen Mode': ZenMode().sprites_drawing(), 'Arcade Mode':
+              ArcadeMode().sprites_drawing()}
+scene = scenes['Menu']
 
 
 def terminate():
@@ -204,8 +296,14 @@ def draw_time(x, y):
 
 
 def game_over():  # завершение игры, вывод счета
-    global score, run
+    global cursor, connect, score
+    cursor.execute("""INSERT INTO result(res) VALUES(?)""", (str(score), ))
+    connect.commit()
+    global run
+    list_score = cursor1.execute("""SELECT res FROM result """).fetchall()
+    r = max(list_score)
     game_over_text = [f'Вы набрали {score} очков',
+                      f'Лучший результат {r[0]} ',
                       'Кликните чтобы продолжить']
     fon = pygame.transform.scale(load_image('background.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
@@ -220,6 +318,8 @@ def game_over():  # завершение игры, вывод счета
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
     score = 0
+    global scene
+    scene = scenes['Menu']
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -230,7 +330,6 @@ def game_over():  # завершение игры, вывод счета
                 if start_screen2():
                     return True
         pygame.display.flip()
-
 
 
 def start_screen1():
@@ -258,7 +357,7 @@ def start_screen2():
                   "Arcade – режим с ограниченным временем (одна минута),",
                   "  помимо обычных фруктов игра будет подбрасывать вам особые бананы,",
                   "  некоторые из них активируют режим slo-mo, ускоряют появление фруктов на экране или удваивают очки."
-                    ]
+                  ]
     fon2 = pygame.transform.scale(load_image('fon3.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon2, (0, 0))
     font = pygame.font.Font(None, 50)
@@ -316,26 +415,24 @@ screen = pygame.display.set_mode(size)
 start_screen1()
 start_time = time.time()
 extra_time = 0
-data = ['Red_Apple.png', 'Coconut.png', 'Mango.png', 'Pineapple.png', 'Bomb.png', 'Score_2x_Banana.png',
-        '5seconds_Banana.png',
-        'Watermelon.png', 'Banana.png', 'Kiwi.png', 'Lemon.png', 'Orange.png', 'Pear.png', 'melon.png']
 
 
 # Score_2x_Banana удваивает счет, 10seconds_Banana добавляет 10 секунд времени, Bomb отнимает 5 секунд
 
 
 def job():
-    k = random.randrange(2, 5)
+    k = random.randrange(2, 4)
     for i in range(k):
-        Sprites(data[random.randrange(0, 10)])
+        Sprites(data[random.randrange(0, 13)])
 
 
-schedule.every(3).seconds.do(job)
+schedule.every(2).seconds.do(job)
 
 if __name__ == '__main__':
     while running:
         end_time = time.time()
         schedule.run_pending()  # запуск запланированных заданий
+        pygame.mouse.set_visible(True)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
